@@ -1,3 +1,4 @@
+package entidades;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -5,25 +6,27 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 
+import persistencia.Registro;
+
 public class Jogo implements Registro {
     long id;
     String nome;
     float preco;
     LocalDate dataLancamento;
     long publicadoraId;
-    boolean ativo; // Lapide para marcar o arquivo como "deletado" ou nao
+    String[] idiomas;
 
     public Jogo() {
-        this(-1, "Sem nome", 0, LocalDate.now(), -1, true);
+        this(-1, "Sem nome", 0, LocalDate.now(), -1, new String[0]);
     }
 
-    public Jogo(long id, String nome, float preco, LocalDate dataLancamento, long publicadoraId, boolean ativo) {
+    public Jogo(long id, String nome, float preco, LocalDate dataLancamento, long publicadoraId, String[] idiomas) {
         this.id = id;
         this.nome = nome;
         this.preco = preco;
         this.dataLancamento = dataLancamento;
         this.publicadoraId = publicadoraId;
-        this.ativo = ativo;
+        this.idiomas = idiomas;
     }
     
     @Override
@@ -35,6 +38,12 @@ public class Jogo implements Registro {
         dos.writeFloat(preco);
         dos.writeLong(publicadoraId);
         dos.writeLong(this.dataLancamento.toEpochDay());
+        
+        dos.writeInt(this.idiomas.length);
+
+        for (String idioma : this.idiomas) {
+            dos.writeUTF(idioma);
+        }
 
         return baos.toByteArray();
     }
@@ -48,6 +57,14 @@ public class Jogo implements Registro {
         this.preco = dis.readFloat();
         this.publicadoraId = dis.readLong();
         this.dataLancamento = LocalDate.ofEpochDay(dis.readLong());
+
+        int quantidade = dis.readInt();
+
+        this.idiomas = new String[quantidade];
+
+        for (int i = 0; i < quantidade; i++) {
+            this.idiomas[i] = dis.readUTF();
+        }
     }
 
     //Getters e Setters
@@ -81,10 +98,27 @@ public class Jogo implements Registro {
     public void setPublicadoraId(long publicadoraId) {
         this.publicadoraId = publicadoraId;
     }
-    public boolean isAtivo() {
-        return ativo;
+    public void setIdiomas(String[] idiomas) {
+        this.idiomas = idiomas;
     }
-    public void setAtivo(boolean ativo) {
-        this.ativo = ativo;
+    public void setIdiomas(String idioma, int pos) {
+        try {
+            idiomas[pos] = idioma;
+        }
+        catch (ArrayIndexOutOfBoundsException e){
+            System.out.println("!ERRO! Posicao de idioma invalida.");
+        }
+    }
+    public String[] getIdiomas() {
+        return idiomas;
+    }
+    public String getIdioma(int pos) {
+        try {
+            return idiomas[pos];
+        }
+        catch (ArrayIndexOutOfBoundsException e){
+            System.out.println("!ERRO! Posicao de idioma invalida.");
+            return null;
+        }
     }
 }

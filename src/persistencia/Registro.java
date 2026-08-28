@@ -1,3 +1,5 @@
+package persistencia;
+
 import java.io.IOException;
 
 public interface Registro {
