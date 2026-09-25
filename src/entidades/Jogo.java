@@ -1,4 +1,5 @@
 package entidades;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -28,7 +29,7 @@ public class Jogo implements Registro {
         this.publicadoraId = publicadoraId;
         this.idiomas = idiomas;
     }
-    
+
     @Override
     public byte[] toByteArray() throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -38,7 +39,7 @@ public class Jogo implements Registro {
         dos.writeFloat(preco);
         dos.writeLong(publicadoraId);
         dos.writeLong(this.dataLancamento.toEpochDay());
-        
+
         dos.writeInt(this.idiomas.length);
 
         for (String idioma : this.idiomas) {
@@ -67,56 +68,67 @@ public class Jogo implements Registro {
         }
     }
 
-    //Getters e Setters
+    // Getters e Setters
     public long getId() {
         return id;
     }
+
     public void setId(long id) {
         this.id = id;
     }
+
     public String getNome() {
         return nome;
     }
+
     public void setNome(String nome) {
         this.nome = nome;
     }
+
     public float getPreco() {
         return preco;
     }
+
     public void setPreco(float preco) {
         this.preco = preco;
     }
+
     public LocalDate getDataLancamento() {
         return dataLancamento;
     }
+
     public void setDataLancamento(LocalDate dataLancamento) {
         this.dataLancamento = dataLancamento;
     }
+
     public long getPublicadoraId() {
         return publicadoraId;
     }
+
     public void setPublicadoraId(long publicadoraId) {
         this.publicadoraId = publicadoraId;
     }
+
     public void setIdiomas(String[] idiomas) {
         this.idiomas = idiomas;
     }
+
     public void setIdiomas(String idioma, int pos) {
         try {
             idiomas[pos] = idioma;
-        }
-        catch (ArrayIndexOutOfBoundsException e){
+        } catch (ArrayIndexOutOfBoundsException e) {
             System.out.println("!ERRO! Posicao de idioma invalida.");
         }
     }
+
     public String[] getIdiomas() {
         return idiomas;
     }
+
     public String getIdioma(int pos) {
         try {
             return idiomas[pos];
-        }
-        catch (ArrayIndexOutOfBoundsException e){
+        } catch (ArrayIndexOutOfBoundsException e) {
             System.out.println("!ERRO! Posicao de idioma invalida.");
             return null;
         }

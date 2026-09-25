@@ -1,42 +1,87 @@
 package menu;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.time.LocalDate;
 
 import entidades.Jogo;
+import entidades.Publicadora;
 import persistencia.Arquivo;
 
 public class Menu {
 
-    private String menuOpcoes =
-        "========== CATALOGO DE JOGOS ==========\r\n" +
-        "\r\n" +
-        "1 - Cadastrar jogo\r\n" +
-        "2 - Consultar jogo\r\n" +
-        "3 - Listar jogos\r\n" +
-        "4 - Atualizar jogo\r\n" +
-        "5 - Excluir jogo\r\n" +
-        "0 - Sair\r\n" +
-        "\r\n" +
-        "Escolha: ";
-
     private Scanner scanner;
-    private Arquivo<Jogo> arquivo;
+    private Arquivo<Jogo> arquivoJogos;
+    private Arquivo<Publicadora> arquivoPublicadoras;
 
     public Menu() throws Exception {
         scanner = new Scanner(System.in);
-        arquivo = new Arquivo<>(
-            "jogos",
-            Jogo.class.getConstructor()
-        );
+
+        arquivoJogos = new Arquivo<>(
+                "jogos",
+                Jogo.class.getConstructor());
+
+        arquivoPublicadoras = new Arquivo<>(
+                "publicadoras",
+                Publicadora.class.getConstructor());
     }
 
     public void executar() throws Exception {
         int opcao;
 
         do {
-            System.out.println(menuOpcoes);
+            System.out.println("\n========== CATALOGO DE JOGOS ==========");
+            System.out.println();
+            System.out.println("1 - Jogos");
+            System.out.println("2 - Publicadoras");
+            System.out.println("0 - Sair");
+            System.out.print("\nEscolha: ");
+
+            opcao = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (opcao) {
+                case 1:
+                    menuJogos();
+                    break;
+
+                case 2:
+                    menuPublicadoras();
+                    break;
+
+                case 0:
+                    System.out.println("Encerrando...");
+                    break;
+
+                default:
+                    System.out.println("Opcao invalida!");
+            }
+
+        } while (opcao != 0);
+
+        arquivoJogos.close();
+        arquivoPublicadoras.close();
+        scanner.close();
+    }
+
+    // =========================================================
+    // MENU DE JOGOS
+    // =========================================================
+
+    private void menuJogos() throws Exception {
+        int opcao;
+
+        do {
+            System.out.println("\n========== JOGOS ==========");
+            System.out.println();
+            System.out.println("1 - Cadastrar jogo");
+            System.out.println("2 - Consultar jogo");
+            System.out.println("3 - Listar jogos");
+            System.out.println("4 - Atualizar jogo");
+            System.out.println("5 - Excluir jogo");
+            System.out.println("0 - Voltar");
+            System.out.print("\nEscolha: ");
+
             opcao = scanner.nextInt();
             scanner.nextLine();
 
@@ -62,7 +107,6 @@ public class Menu {
                     break;
 
                 case 0:
-                    System.out.println("Encerrando...");
                     break;
 
                 default:
@@ -70,9 +114,6 @@ public class Menu {
             }
 
         } while (opcao != 0);
-
-        arquivo.close();
-        scanner.close();
     }
 
     private void cadastrarJogo() throws Exception {
@@ -92,6 +133,13 @@ public class Menu {
         long publicadoraId = scanner.nextLong();
         scanner.nextLine();
 
+        Publicadora publicadora = arquivoPublicadoras.read(publicadoraId);
+
+        if (publicadora == null) {
+            System.out.println("Publicadora nao encontrada.");
+            return;
+        }
+
         System.out.print("Quantidade de idiomas: ");
         int quantidadeIdiomas = scanner.nextInt();
         scanner.nextLine();
@@ -104,15 +152,14 @@ public class Menu {
         }
 
         Jogo jogo = new Jogo(
-            -1,
-            nome,
-            preco,
-            dataLancamento,
-            publicadoraId,
-            idiomas
-        );
+                -1,
+                nome,
+                preco,
+                dataLancamento,
+                publicadoraId,
+                idiomas);
 
-        long id = arquivo.create(jogo);
+        long id = arquivoJogos.create(jogo);
 
         System.out.println("\nJogo cadastrado com ID: " + id);
     }
@@ -124,7 +171,7 @@ public class Menu {
         long id = scanner.nextLong();
         scanner.nextLine();
 
-        Jogo jogo = arquivo.read(id);
+        Jogo jogo = arquivoJogos.read(id);
 
         if (jogo == null) {
             System.out.println("Jogo nao encontrado.");
@@ -136,7 +183,7 @@ public class Menu {
     private void listarJogos() throws Exception {
         System.out.println("\n========== LISTAR JOGOS ==========");
 
-        ArrayList<Jogo> jogos = arquivo.readAll();
+        ArrayList<Jogo> jogos = arquivoJogos.readAll();
 
         if (jogos.isEmpty()) {
             System.out.println("Nenhum jogo cadastrado.");
@@ -155,14 +202,17 @@ public class Menu {
         long id = scanner.nextLong();
         scanner.nextLine();
 
-        Jogo jogo = arquivo.read(id);
+        Jogo jogo = arquivoJogos.read(id);
 
         if (jogo == null) {
             System.out.println("Jogo nao encontrado.");
             return;
         }
 
-        System.out.println("Digite os novos dados:");
+        System.out.println("\nDados atuais:");
+        mostrarJogo(jogo);
+
+        System.out.println("\nDigite os novos dados:");
 
         System.out.print("Nome: ");
         String nome = scanner.nextLine();
@@ -178,6 +228,14 @@ public class Menu {
         long publicadoraId = scanner.nextLong();
         scanner.nextLine();
 
+        // Verifica se a publicadora existe
+        Publicadora publicadora = arquivoPublicadoras.read(publicadoraId);
+
+        if (publicadora == null) {
+            System.out.println("Publicadora nao encontrada.");
+            return;
+        }
+
         System.out.print("Quantidade de idiomas: ");
         int quantidadeIdiomas = scanner.nextInt();
         scanner.nextLine();
@@ -185,23 +243,26 @@ public class Menu {
         String[] idiomas = new String[quantidadeIdiomas];
 
         for (int i = 0; i < quantidadeIdiomas; i++) {
-            System.out.print("Idioma " + (i + 1) + ": ");
+            System.out.print(
+                    "Idioma " + (i + 1) + ": ");
+
             idiomas[i] = scanner.nextLine();
         }
 
         Jogo novoJogo = new Jogo(
-            id,
-            nome,
-            preco,
-            dataLancamento,
-            publicadoraId,
-            idiomas
-        );
+                id, // mantém o ID!
+                nome,
+                preco,
+                dataLancamento,
+                publicadoraId,
+                idiomas);
 
-        if (arquivo.update(novoJogo)) {
-            System.out.println("Jogo atualizado com sucesso!");
+        if (arquivoJogos.update(novoJogo)) {
+            System.out.println(
+                    "Jogo atualizado com sucesso!");
         } else {
-            System.out.println("Nao foi possivel atualizar o jogo.");
+            System.out.println(
+                    "Nao foi possivel atualizar o jogo.");
         }
     }
 
@@ -212,18 +273,20 @@ public class Menu {
         long id = scanner.nextLong();
         scanner.nextLine();
 
-        Jogo jogo = arquivo.read(id);
+        Jogo jogo = arquivoJogos.read(id);
 
         if (jogo == null) {
             System.out.println("Jogo nao encontrado.");
             return;
         }
 
-        System.out.print("Tem certeza que deseja excluir? (S/N): ");
+        mostrarJogo(jogo);
+
+        System.out.print("\nTem certeza que deseja excluir? (S/N): ");
         String resposta = scanner.nextLine();
 
         if (resposta.equalsIgnoreCase("S")) {
-            if (arquivo.delete(id)) {
+            if (arquivoJogos.delete(id)) {
                 System.out.println("Jogo excluido com sucesso!");
             } else {
                 System.out.println("Nao foi possivel excluir o jogo.");
@@ -250,5 +313,220 @@ public class Menu {
         }
 
         System.out.println("--------------------------");
+    }
+
+    // =========================================================
+    // MENU DE PUBLICADORAS
+    // =========================================================
+
+    private void menuPublicadoras() throws Exception {
+        int opcao;
+
+        do {
+            System.out.println("\n========== PUBLICADORAS ==========");
+            System.out.println();
+            System.out.println("1 - Cadastrar publicadora");
+            System.out.println("2 - Consultar publicadora");
+            System.out.println("3 - Listar publicadoras");
+            System.out.println("4 - Atualizar publicadora");
+            System.out.println("5 - Excluir publicadora");
+            System.out.println("0 - Voltar");
+            System.out.print("\nEscolha: ");
+
+            opcao = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (opcao) {
+                case 1:
+                    cadastrarPublicadora();
+                    break;
+
+                case 2:
+                    consultarPublicadora();
+                    break;
+
+                case 3:
+                    listarPublicadoras();
+                    break;
+
+                case 4:
+                    atualizarPublicadora();
+                    break;
+
+                case 5:
+                    excluirPublicadora();
+                    break;
+
+                case 0:
+                    break;
+
+                default:
+                    System.out.println("Opcao invalida!");
+            }
+
+        } while (opcao != 0);
+    }
+
+    private void cadastrarPublicadora() throws Exception {
+        System.out.println("\n========== CADASTRAR PUBLICADORA ==========");
+
+        System.out.print("Nome: ");
+        String nome = scanner.nextLine();
+
+        System.out.print("Pais: ");
+        String pais = scanner.nextLine();
+
+        System.out.print("Ano de fundacao: ");
+        int anoFundacao = scanner.nextInt();
+        scanner.nextLine();
+
+        System.out.print("Descricao: ");
+        String descricao = scanner.nextLine();
+
+        Publicadora publicadora = new Publicadora(
+                -1,
+                nome,
+                pais,
+                anoFundacao,
+                descricao);
+
+        long id = arquivoPublicadoras.create(publicadora);
+
+        System.out.println("\nPublicadora cadastrada com ID: " + id);
+    }
+
+    private void consultarPublicadora() throws Exception {
+        System.out.println("\n========== CONSULTAR PUBLICADORA ==========");
+
+        System.out.print("ID da publicadora: ");
+        long id = scanner.nextLong();
+        scanner.nextLine();
+
+        Publicadora publicadora = arquivoPublicadoras.read(id);
+
+        if (publicadora == null) {
+            System.out.println("Publicadora nao encontrada.");
+        } else {
+            mostrarPublicadora(publicadora);
+        }
+    }
+
+    private void listarPublicadoras() throws Exception {
+        System.out.println("\n========== LISTAR PUBLICADORAS ==========");
+
+        ArrayList<Publicadora> publicadoras = arquivoPublicadoras.readAll();
+
+        if (publicadoras.isEmpty()) {
+            System.out.println("Nenhuma publicadora cadastrada.");
+            return;
+        }
+
+        for (Publicadora publicadora : publicadoras) {
+            mostrarPublicadora(publicadora);
+        }
+    }
+
+    private void atualizarPublicadora() throws Exception {
+        System.out.println("\n========== ATUALIZAR PUBLICADORA ==========");
+
+        System.out.print("ID da publicadora: ");
+        long id = scanner.nextLong();
+        scanner.nextLine();
+
+        Publicadora publicadora = arquivoPublicadoras.read(id);
+
+        if (publicadora == null) {
+            System.out.println("Publicadora nao encontrada.");
+            return;
+        }
+
+        System.out.println("\nDados atuais:");
+        mostrarPublicadora(publicadora);
+
+        System.out.println("\nDigite os novos dados:");
+
+        System.out.print("Nome: ");
+        String nome = scanner.nextLine();
+
+        System.out.print("Pais: ");
+        String pais = scanner.nextLine();
+
+        System.out.print("Ano de fundacao: ");
+        int anoFundacao = scanner.nextInt();
+        scanner.nextLine();
+
+        System.out.print("Descricao: ");
+        String descricao = scanner.nextLine();
+
+        Publicadora novaPublicadora = new Publicadora(
+                id,
+                nome,
+                pais,
+                anoFundacao,
+                descricao);
+
+        if (arquivoPublicadoras.update(novaPublicadora)) {
+            System.out.println("Publicadora atualizada com sucesso!");
+        } else {
+            System.out.println("Nao foi possivel atualizar a publicadora.");
+        }
+    }
+
+    private void excluirPublicadora() throws Exception {
+        System.out.println("\n========== EXCLUIR PUBLICADORA ==========");
+
+        System.out.print("ID da publicadora: ");
+        long id = scanner.nextLong();
+        scanner.nextLine();
+
+        Publicadora publicadora = arquivoPublicadoras.read(id);
+
+        if (publicadora == null) {
+            System.out.println("Publicadora nao encontrada.");
+            return;
+        }
+
+        if (publicadoraPossuiJogos(id)) {
+            System.out.println(
+                    "Nao e possivel excluir esta publicadora, pois existem jogos associados a ela.");
+            return;
+        }
+
+        mostrarPublicadora(publicadora);
+
+        System.out.print("\nTem certeza que deseja excluir? (S/N): ");
+        String resposta = scanner.nextLine();
+
+        if (resposta.equalsIgnoreCase("S")) {
+            if (arquivoPublicadoras.delete(id)) {
+                System.out.println("Publicadora excluida com sucesso!");
+            } else {
+                System.out.println("Nao foi possivel excluir a publicadora.");
+            }
+        } else {
+            System.out.println("Operacao cancelada.");
+        }
+    }
+
+    private void mostrarPublicadora(Publicadora publicadora) {
+        System.out.println("\n---------- PUBLICADORA ----------");
+        System.out.println("ID: " + publicadora.getId());
+        System.out.println("Nome: " + publicadora.getNome());
+        System.out.println("Pais: " + publicadora.getPais());
+        System.out.println("Ano de fundacao: " + publicadora.getAnoFundacao());
+        System.out.println("Descricao: " + publicadora.getDescricao());
+        System.out.println("---------------------------------");
+    }
+
+    private boolean publicadoraPossuiJogos(long publicadoraId) throws Exception {
+        ArrayList<Jogo> jogos = arquivoJogos.readAll();
+
+        for (Jogo jogo : jogos) {
+            if (jogo.getPublicadoraId() == publicadoraId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
