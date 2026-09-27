@@ -13,6 +13,7 @@ public class Menu {
     private Scanner scanner;
     private Arquivo<Jogo> arquivoJogos;
     private Arquivo<Publicadora> arquivoPublicadoras;
+    private persistencia.ArvoreBMais arvorePublicadoraJogo;
 
     public Menu() throws Exception {
         scanner = new Scanner(System.in);
@@ -24,6 +25,9 @@ public class Menu {
         arquivoPublicadoras = new Arquivo<>(
                 "publicadoras",
                 Publicadora.class.getConstructor());
+        arvorePublicadoraJogo = new persistencia.ArvoreBMais(
+                5, 
+                "./dados/indices/arvore_pub_jogo.db");
     }
 
     public void executar() throws Exception {
@@ -79,6 +83,7 @@ public class Menu {
             System.out.println("3 - Listar jogos");
             System.out.println("4 - Atualizar jogo");
             System.out.println("5 - Excluir jogo");
+            System.out.println("6 - Listar jogos da publicadora");
             System.out.println("0 - Voltar");
             System.out.print("\nEscolha: ");
 
@@ -104,8 +109,7 @@ public class Menu {
 
                 case 5:
                     excluirJogo();
-                    break;
-
+                    break;            
                 case 0:
                     break;
 
@@ -160,6 +164,8 @@ public class Menu {
                 idiomas);
 
         long id = arquivoJogos.create(jogo);
+
+        arvorePublicadoraJogo.create(publicadoraId, id);
 
         System.out.println("\nJogo cadastrado com ID: " + id);
     }
@@ -330,6 +336,7 @@ public class Menu {
             System.out.println("3 - Listar publicadoras");
             System.out.println("4 - Atualizar publicadora");
             System.out.println("5 - Excluir publicadora");
+            System.out.println("6 - Listar jogos da publicadora");
             System.out.println("0 - Voltar");
             System.out.print("\nEscolha: ");
 
@@ -355,6 +362,10 @@ public class Menu {
 
                 case 5:
                     excluirPublicadora();
+                    break;
+                
+                case 6:
+                    listarJogosDaPublicadora();
                     break;
 
                 case 0:
@@ -516,6 +527,38 @@ public class Menu {
         System.out.println("Ano de fundacao: " + publicadora.getAnoFundacao());
         System.out.println("Descricao: " + publicadora.getDescricao());
         System.out.println("---------------------------------");
+    }
+
+    private void listarJogosDaPublicadora() throws Exception {
+        System.out.println("\n========== JOGOS DA PUBLICADORA ==========");
+
+        System.out.print("ID da publicadora: ");
+        long publicadoraId = scanner.nextLong();
+        scanner.nextLine();
+
+        Publicadora publicadora = arquivoPublicadoras.read(publicadoraId);
+
+        if (publicadora == null) {
+            System.out.println("Publicadora nao encontrada.");
+            return;
+        }
+
+        // Lê a lista de IDs de jogos associados a esta publicadora através da Árvore B+
+        ArrayList<Long> idsJogos = arvorePublicadoraJogo.read(publicadoraId);
+
+        if (idsJogos.isEmpty()) {
+            System.out.println("Nenhum jogo encontrado para a publicadora " + publicadora.getNome() + ".");
+            return;
+        }
+
+        System.out.println("\nJogos encontrados (" + idsJogos.size() + "):");
+        for (long idJogo : idsJogos) {
+            // Busca o objeto Jogo completo usando o Hash Extensível
+            Jogo jogo = arquivoJogos.read(idJogo);
+            if (jogo != null) {
+                mostrarJogo(jogo);
+            }
+        }
     }
 
     private boolean publicadoraPossuiJogos(long publicadoraId) throws Exception {
