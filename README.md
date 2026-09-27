@@ -1,18 +1,36 @@
-## Getting Started
+# Catálogo de Jogos
 
-Welcome to the VS Code Java world. Here is a guideline to help you get started to write Java code in Visual Studio Code.
+Trabalho Prático desenvolvido para a disciplina de **Algoritmos e Estruturas de Dados III**, do curso de Engenharia de Computação da **PUC Minas**.
 
-## Folder Structure
+## Integrantes
 
-The workspace contains two folders by default, where:
+- Gabriel El-dine
+- Gabriel Logan
+- Kleber Rhuan
 
-- `src`: the folder to maintain sources
-- `lib`: the folder to maintain dependencies
+## Sobre o projeto
 
-Meanwhile, the compiled output files will be generated in the `bin` folder by default.
+O projeto consiste no desenvolvimento de um **sistema de catálogo de jogos**, inspirado em plataformas de distribuição digital como a Steam.
 
-> If you want to customize the folder structure, open `.vscode/settings.json` and update the related settings there.
+O sistema permite armazenar e gerenciar informações sobre jogos e suas respectivas publicadoras, mantendo os dados de forma persistente em arquivos binários.
 
-## Dependency Management
+Ao longo do trabalho são aplicados conceitos estudados na disciplina, como estruturas de dados em memória secundária, indexação e organização de arquivos.
 
-The `JAVA PROJECTS` view allows you to manage your dependencies. More details can be found [here](https://github.com/microsoft/vscode-java-dependency#manage-dependencies).
+## Proposta
+
+O sistema oferece funcionalidades para:
+
+- Cadastrar, consultar, listar, atualizar e excluir jogos;
+- Cadastrar, consultar, listar, atualizar e excluir publicadoras;
+- Relacionar jogos às suas respectivas publicadoras;
+- Consultar os jogos pertencentes a uma publicadora;
+- Manter índices para acesso eficiente aos registros;
+- Ordenar externamente o catálogo de jogos.
+
+## Tecnologias
+
+- Java
+- Arquivos binários
+- Hash Extensível
+- Árvore B+
+- Intercalação Balanceada
