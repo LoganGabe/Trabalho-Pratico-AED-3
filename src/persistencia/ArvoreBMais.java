@@ -9,16 +9,16 @@ public class ArvoreBMais {
     private int maxFilhos;
     private RandomAccessFile arquivo;
     private long raiz; // Ponteiro (endereço) para o nó raiz no ficheiro
-    
+
     private final int TAMANHO_CABECALHO = 8; // 8 bytes para guardar o endereço da raiz
 
     public ArvoreBMais(int ordem, String nomeArquivo) throws Exception {
         this.ordem = ordem;
         this.maxChaves = ordem - 1;
         this.maxFilhos = ordem;
-        
+
         this.arquivo = new RandomAccessFile(nomeArquivo, "rw");
-        
+
         if (this.arquivo.length() < TAMANHO_CABECALHO) {
             // Ficheiro novo: inicializa o cabeçalho e cria a raiz vazia
             inicializarArvore();
@@ -32,12 +32,12 @@ public class ArvoreBMais {
     private void inicializarArvore() throws Exception {
         // Grava espaço para o cabeçalho (raiz)
         this.arquivo.seek(0);
-        this.arquivo.writeLong(-1); 
-        
+        this.arquivo.writeLong(-1);
+
         // Cria a primeira página (que é raiz e folha ao mesmo tempo)
         Pagina novaRaiz = new Pagina(true);
         this.raiz = gravarPagina(novaRaiz); // Grava no fim e obtém o endereço
-        
+
         // Atualiza o cabeçalho com o endereço da nova raiz
         this.arquivo.seek(0);
         this.arquivo.writeLong(this.raiz);
@@ -62,20 +62,21 @@ public class ArvoreBMais {
     class Pagina {
         boolean folha;
         int quantidade; // Número de chaves atuais
-        ChaveComposta[] chaves; 
-        long[] ponteiros; 
+        ChaveComposta[] chaves;
+        long[] ponteiros;
         long irmaoAnterior; // Apenas para folha
         long irmaoSeguinte; // Apenas para folha
 
         public Pagina(boolean folha) {
             this.folha = folha;
             this.quantidade = 0;
-            
+
             // maxChaves + 1 para suportar o overflow temporário antes do split
             this.chaves = new ChaveComposta[maxChaves + 1];
             this.ponteiros = new long[maxFilhos + 1];
-            
-            for (int i = 0; i < maxFilhos + 1; i++) ponteiros[i] = -1;
+
+            for (int i = 0; i < maxFilhos + 1; i++)
+                ponteiros[i] = -1;
             this.irmaoAnterior = -1;
             this.irmaoSeguinte = -1;
         }
@@ -156,18 +157,22 @@ public class ArvoreBMais {
 
     private Pagina lerPagina(long endereco) throws Exception {
         this.arquivo.seek(endereco);
-        Pagina pagina = new Pagina(true); 
+        Pagina pagina = new Pagina(true);
         pagina.lerDoArquivo(this.arquivo);
         return pagina;
     }
 
     // Método auxiliar de ordenação
     private int compararChaves(ChaveComposta c1, ChaveComposta c2) {
-        if (c1.publicadoraId < c2.publicadoraId) return -1;
-        if (c1.publicadoraId > c2.publicadoraId) return 1;
-        if (c1.jogoId < c2.jogoId) return -1;
-        if (c1.jogoId > c2.jogoId) return 1;
-        return 0; 
+        if (c1.publicadoraId < c2.publicadoraId)
+            return -1;
+        if (c1.publicadoraId > c2.publicadoraId)
+            return 1;
+        if (c1.jogoId < c2.jogoId)
+            return -1;
+        if (c1.jogoId > c2.jogoId)
+            return 1;
+        return 0;
     }
 
     /**
@@ -175,7 +180,8 @@ public class ArvoreBMais {
      */
     public ArrayList<Long> read(long publicadoraId) throws Exception {
         ArrayList<Long> listaJogos = new ArrayList<>();
-        if (this.raiz == -1) return listaJogos;
+        if (this.raiz == -1)
+            return listaJogos;
 
         long enderecoAtual = this.raiz;
         Pagina paginaAtual = lerPagina(enderecoAtual);
@@ -195,11 +201,11 @@ public class ArvoreBMais {
                 if (paginaAtual.chaves[i].publicadoraId == publicadoraId) {
                     listaJogos.add(paginaAtual.chaves[i].jogoId);
                 } else if (paginaAtual.chaves[i].publicadoraId > publicadoraId) {
-                    continuar = false; 
+                    continuar = false;
                     break;
                 }
             }
-            
+
             if (continuar && paginaAtual.irmaoSeguinte != -1) {
                 paginaAtual = lerPagina(paginaAtual.irmaoSeguinte);
             } else {
@@ -215,7 +221,8 @@ public class ArvoreBMais {
      */
     public boolean create(long publicadoraId, long idJogo) throws Exception {
         ChaveComposta novaChave = new ChaveComposta(publicadoraId, idJogo);
-        if (this.raiz == -1) return false; 
+        if (this.raiz == -1)
+            return false;
 
         java.util.Stack<Long> caminho = new java.util.Stack<>();
         long enderecoAtual = this.raiz;
@@ -224,9 +231,9 @@ public class ArvoreBMais {
         // =========================================================
         // PASSO 1: Descer até à Folha
         // =========================================================
-        
+
         while (!paginaAtual.folha) {
-            caminho.push(enderecoAtual); 
+            caminho.push(enderecoAtual);
             int i = 0;
             while (i < paginaAtual.quantidade && compararChaves(novaChave, paginaAtual.chaves[i]) >= 0) {
                 i++;
@@ -242,13 +249,13 @@ public class ArvoreBMais {
             paginaAtual.chaves[pos + 1] = paginaAtual.chaves[pos];
             pos--;
         }
-        
+
         paginaAtual.chaves[pos + 1] = novaChave;
         paginaAtual.quantidade++;
 
         atualizarPagina(enderecoAtual, paginaAtual);
 
-       // =========================================================
+        // =========================================================
         // PASSO 3: O Split (Divisão) e a Promoção
         // =========================================================
         long enderecoFilho = enderecoAtual;
@@ -258,12 +265,12 @@ public class ArvoreBMais {
         while (paginaFilho.quantidade > maxChaves) {
             Pagina novaPagina = new Pagina(paginaFilho.folha);
             int meio = paginaFilho.quantidade / 2;
-            
-            // Se for folha, a chave sobe e TAMBÉM fica na direita. 
+
+            // Se for folha, a chave sobe e TAMBÉM fica na direita.
             // Se for nó interno, a chave sobe e NÃO fica na direita.
             int inicioTransferencia = paginaFilho.folha ? meio : meio + 1;
             int j = 0;
-            
+
             // Transfere as chaves e ponteiros da metade superior
             for (int k = inicioTransferencia; k < paginaFilho.quantidade; k++) {
                 novaPagina.chaves[j] = paginaFilho.chaves[k];
@@ -271,25 +278,25 @@ public class ArvoreBMais {
                 j++;
             }
             // Copia o último ponteiro que sobra à direita da última chave transferida
-            novaPagina.ponteiros[j] = paginaFilho.ponteiros[paginaFilho.quantidade]; 
+            novaPagina.ponteiros[j] = paginaFilho.ponteiros[paginaFilho.quantidade];
             novaPagina.quantidade = j;
-            
+
             // A chave que será promovida ao pai
             ChaveComposta chavePromovida = paginaFilho.chaves[meio];
-            
+
             // A página original fica apenas com a metade inferior
-            paginaFilho.quantidade = meio; 
-            
+            paginaFilho.quantidade = meio;
+
             long enderecoNovaPagina = -1;
-            
+
             if (paginaFilho.folha) {
                 // Atualiza a lista ligada das folhas (essencial para o read funcionar)
                 novaPagina.irmaoSeguinte = paginaFilho.irmaoSeguinte;
                 novaPagina.irmaoAnterior = enderecoFilho;
                 enderecoNovaPagina = gravarPagina(novaPagina);
-                
+
                 paginaFilho.irmaoSeguinte = enderecoNovaPagina;
-                
+
                 if (novaPagina.irmaoSeguinte != -1) {
                     Pagina irmao = lerPagina(novaPagina.irmaoSeguinte);
                     irmao.irmaoAnterior = enderecoNovaPagina;
@@ -298,20 +305,21 @@ public class ArvoreBMais {
             } else {
                 enderecoNovaPagina = gravarPagina(novaPagina);
             }
-            
+
             atualizarPagina(enderecoFilho, paginaFilho);
-            
+
             // =========================================================
             // PASSO 4: Inserir a chave no Nó Pai
             // =========================================================
             if (caminho.isEmpty()) {
-                // Se a pilha de caminhos está vazia, a raiz transbordou. A árvore cresce em altura!
+                // Se a pilha de caminhos está vazia, a raiz transbordou. A árvore cresce em
+                // altura!
                 Pagina novaRaiz = new Pagina(false);
                 novaRaiz.chaves[0] = chavePromovida;
                 novaRaiz.ponteiros[0] = enderecoFilho;
                 novaRaiz.ponteiros[1] = enderecoNovaPagina;
                 novaRaiz.quantidade = 1;
-                
+
                 this.raiz = gravarPagina(novaRaiz);
                 this.arquivo.seek(0);
                 this.arquivo.writeLong(this.raiz);
@@ -320,7 +328,7 @@ public class ArvoreBMais {
                 // Retira o pai da pilha e insere lá a chave promovida
                 long enderecoPai = caminho.pop();
                 Pagina paginaPai = lerPagina(enderecoPai);
-                
+
                 int posPai = paginaPai.quantidade - 1;
                 // Desloca chaves e ponteiros do pai para abrir espaço
                 while (posPai >= 0 && compararChaves(chavePromovida, paginaPai.chaves[posPai]) < 0) {
@@ -328,14 +336,15 @@ public class ArvoreBMais {
                     paginaPai.ponteiros[posPai + 2] = paginaPai.ponteiros[posPai + 1];
                     posPai--;
                 }
-                
+
                 paginaPai.chaves[posPai + 1] = chavePromovida;
                 paginaPai.ponteiros[posPai + 2] = enderecoNovaPagina;
                 paginaPai.quantidade++;
-                
+
                 atualizarPagina(enderecoPai, paginaPai);
-                
-                // O nó pai passa a ser o nó em análise para a próxima repetição do ciclo `while`
+
+                // O nó pai passa a ser o nó em análise para a próxima repetição do ciclo
+                // `while`
                 enderecoFilho = enderecoPai;
                 paginaFilho = paginaPai;
             }
@@ -346,6 +355,72 @@ public class ArvoreBMais {
     }
 
     public boolean delete(long publicadoraId, long idJogo) throws Exception {
+        ArrayList<ChaveComposta> chavesMantidas = new ArrayList<>();
+        boolean encontrou = false;
+
+        // Vai até a folha mais à esquerda.
+        long enderecoAtual = this.raiz;
+        Pagina paginaAtual = lerPagina(enderecoAtual);
+
+        while (!paginaAtual.folha) {
+            enderecoAtual = paginaAtual.ponteiros[0];
+            paginaAtual = lerPagina(enderecoAtual);
+        }
+
+        // Percorre todas as folhas.
+        while (true) {
+
+            for (int i = 0; i < paginaAtual.quantidade; i++) {
+
+                ChaveComposta chave = paginaAtual.chaves[i];
+
+                if (chave.publicadoraId == publicadoraId &&
+                        chave.jogoId == idJogo) {
+                    encontrou = true;
+                } else {
+
+                    chavesMantidas.add(
+                            new ChaveComposta(
+                                    chave.publicadoraId,
+                                    chave.jogoId));
+                }
+            }
+
+            if (paginaAtual.irmaoSeguinte == -1) {
+                break;
+            }
+
+            paginaAtual = lerPagina(
+                    paginaAtual.irmaoSeguinte);
+        }
+
+        if (!encontrou) {
+            return false;
+        }
+
+        /*
+         * Reconstrói a árvore sem a chave removida.
+         *
+         * Para este TP isso simplifica bastante a remoção,
+         * evitando implementar redistribuição e fusão de páginas.
+         */
+        arquivo.setLength(0);
+
+        inicializarArvore();
+
+        for (ChaveComposta chave : chavesMantidas) {
+
+            create(
+                    chave.publicadoraId,
+                    chave.jogoId);
+        }
+
         return true;
     }
+    
+    public void close() throws Exception {
+    if (arquivo != null) {
+        arquivo.close();
+    }
+}
 }

@@ -1,188 +1,703 @@
 package persistencia;
 
 import entidades.Jogo;
+
 import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 
 public class OrdenacaoExterna {
-    private String caminhoArquivo;
-    private int capacidadeMemoria; // Quantos jogos cabem na RAM simulada
 
-    public OrdenacaoExterna(String caminhoArquivo, int capacidadeMemoria) {
-        this.caminhoArquivo = caminhoArquivo;
-        this.capacidadeMemoria = capacidadeMemoria;
+    private final String caminhoArquivo;
+    private final int capacidadeMemoria;
+
+    private final String tempA =
+        "./dados/jogos/tempA.db";
+
+    private final String tempB =
+        "./dados/jogos/tempB.db";
+
+    private final String tempC =
+        "./dados/jogos/tempC.db";
+
+    private final String tempD =
+        "./dados/jogos/tempD.db";
+
+    private int totalRegistros;
+    private int tamanhoRun;
+
+    private String arquivoFinalTemporario;
+
+    public OrdenacaoExterna(
+        String caminhoArquivo,
+        int capacidadeMemoria
+    ) {
+
+        if (capacidadeMemoria <= 0) {
+            throw new IllegalArgumentException(
+                "A capacidade de memoria deve ser maior que zero."
+            );
+        }
+
+        this.caminhoArquivo =
+            caminhoArquivo;
+
+        this.capacidadeMemoria =
+            capacidadeMemoria;
+
+        this.totalRegistros = 0;
+
+        this.tamanhoRun =
+            capacidadeMemoria;
+
+        this.arquivoFinalTemporario =
+            null;
     }
 
-    public void ordenarPorNome() throws Exception {
-        System.out.println("A iniciar a Fase 1: Distribuicao de blocos...");
-        
-        RandomAccessFile arqOrigem = new RandomAccessFile(caminhoArquivo, "r");
-        
-        // Cria ficheiros temporários na mesma pasta dos jogos
-        RandomAccessFile temp1 = new RandomAccessFile("./dados/jogos/temp1.db", "rw");
-        RandomAccessFile temp2 = new RandomAccessFile("./dados/jogos/temp2.db", "rw");
-        
-        // Limpa os ficheiros temporários se já existirem de testes anteriores
-        temp1.setLength(0);
-        temp2.setLength(0);
+    // =========================================================
+    // FASE 1 - DISTRIBUIÇÃO
+    // =========================================================
 
-        // Pula o cabeçalho de 16 bytes padrao da sua classe Arquivo<T>
-        arqOrigem.seek(16); 
+    public void ordenarPorNome()
+        throws Exception {
 
-        ArrayList<Jogo> bloco = new ArrayList<>();
-        boolean alternarArquivo = true; // Para alternar as escritas entre temp1 e temp2
+        System.out.println(
+            "Iniciando Fase 1: distribuicao de blocos..."
+        );
 
-        // Percorre o ficheiro original sequencialmente
-        while (arqOrigem.getFilePointer() < arqOrigem.length()) {
-            byte lapide = arqOrigem.readByte();
-            short tamanho = arqOrigem.readShort();
-            byte[] bytes = new byte[tamanho];
-            arqOrigem.read(bytes);
+        totalRegistros = 0;
 
-            // Só processa se o registo não estiver excluído
-            if (lapide != '*') {
-                Jogo jogo = new Jogo();
-                jogo.fromByteArray(bytes);
-                bloco.add(jogo);
-            }
+        tamanhoRun =
+            capacidadeMemoria;
 
-            // Se o nosso limite de memória encheu OU se chegámos ao fim do ficheiro
-            if (bloco.size() == capacidadeMemoria || arqOrigem.getFilePointer() == arqOrigem.length()) {
-                if (!bloco.isEmpty()) {
-                    // Ordena o bloco em memória pelo NOME (Ordem Alfabética)
-                    bloco.sort(Comparator.comparing(Jogo::getNome));
+        arquivoFinalTemporario =
+            null;
 
-                    // Decide para qual ficheiro temporário vai escrever
-                    RandomAccessFile tempDestino = alternarArquivo ? temp1 : temp2;
-                    
+        try (
+            RandomAccessFile origem =
+                new RandomAccessFile(
+                    caminhoArquivo,
+                    "r"
+                );
+
+            RandomAccessFile a =
+                new RandomAccessFile(
+                    tempA,
+                    "rw"
+                );
+
+            RandomAccessFile b =
+                new RandomAccessFile(
+                    tempB,
+                    "rw"
+                )
+        ) {
+
+            a.setLength(0);
+            b.setLength(0);
+
+            // Pula o cabeçalho do Arquivo<T>
+            origem.seek(16);
+
+            boolean usarA = true;
+
+            ArrayList<Jogo> bloco =
+                new ArrayList<>();
+
+            while (
+                origem.getFilePointer()
+                < origem.length()
+            ) {
+
+                Jogo jogo =
+                    lerRegistroDoArquivoDeDados(
+                        origem
+                    );
+
+                if (jogo != null) {
+
+                    bloco.add(jogo);
+
+                    totalRegistros++;
+                }
+
+                if (
+                    bloco.size()
+                        == capacidadeMemoria
+                    ||
+                    (
+                        origem.getFilePointer()
+                            >= origem.length()
+                        &&
+                        !bloco.isEmpty()
+                    )
+                ) {
+
+                    bloco.sort(
+                        Comparator.comparing(
+                            Jogo::getNome,
+                            String.CASE_INSENSITIVE_ORDER
+                        )
+                    );
+
+                    RandomAccessFile destino =
+                        usarA ? a : b;
+
                     for (Jogo j : bloco) {
-                        byte[] jBytes = j.toByteArray();
-                        tempDestino.writeByte(' '); // Grava a lápide ativa
-                        tempDestino.writeShort(jBytes.length); // Grava o tamanho
-                        tempDestino.write(jBytes); // Grava o payload
+
+                        escreverJogo(
+                            destino,
+                            j
+                        );
                     }
-                    
-                    bloco.clear(); // Esvazia a RAM
-                    alternarArquivo = !alternarArquivo; // Alterna o ficheiro para o próximo bloco
+
+                    bloco.clear();
+
+                    usarA = !usarA;
                 }
             }
         }
 
-        arqOrigem.close();
-        temp1.close();
-        temp2.close();
-        
-        System.out.println("Fase 1 (Distribuicao) concluida com sucesso! Blocos gerados em temp1.db e temp2.db");
+        if (
+            totalRegistros
+            <= capacidadeMemoria
+        ) {
+
+            arquivoFinalTemporario =
+                tempA;
+        }
+
+        System.out.println(
+            "Fase 1 concluida. "
+            + totalRegistros
+            + " registros ativos distribuidos."
+        );
     }
 
-    public void intercalar() throws Exception {
-        System.out.println("A iniciar a Fase 2: Intercalacao...");
-        
-        RandomAccessFile temp1 = new RandomAccessFile("./dados/jogos/temp1.db", "r");
-        RandomAccessFile temp2 = new RandomAccessFile("./dados/jogos/temp2.db", "r");
-        
-        // Ficheiro final que vai receber a junção ordenada
-        RandomAccessFile temp3 = new RandomAccessFile("./dados/jogos/temp3.db", "rw"); 
-        temp3.setLength(0); // Limpa o ficheiro se já existir
+    // =========================================================
+    // FASE 2 - INTERCALAÇÃO
+    // =========================================================
 
-        // Lê o primeiro jogo de cada ficheiro
-        Jogo j1 = lerProximoJogo(temp1);
-        Jogo j2 = lerProximoJogo(temp2);
+    public void intercalar()
+        throws Exception {
 
-        // Enquanto houver jogos em AMBOS os ficheiros, compara-os
-        while (j1 != null && j2 != null) {
-            // Se j1 for alfabeticamente menor ou igual a j2
-            if (j1.getNome().compareToIgnoreCase(j2.getNome()) <= 0) {
-                escreverJogo(temp3, j1);
-                j1 = lerProximoJogo(temp1); // Puxa o próximo do temp1
-            } else {
-                escreverJogo(temp3, j2);
-                j2 = lerProximoJogo(temp2); // Puxa o próximo do temp2
+        System.out.println(
+            "Iniciando Fase 2: intercalacao balanceada..."
+        );
+
+        if (totalRegistros == 0) {
+
+            arquivoFinalTemporario =
+                tempA;
+
+            return;
+        }
+
+        /*
+         * Se coube tudo em um único bloco,
+         * já está ordenado.
+         */
+        if (
+            arquivoFinalTemporario
+            != null
+        ) {
+
+            System.out.println(
+                "Apenas um bloco foi gerado."
+            );
+
+            return;
+        }
+
+        String entrada1 =
+            tempA;
+
+        String entrada2 =
+            tempB;
+
+        String saida1 =
+            tempC;
+
+        String saida2 =
+            tempD;
+
+        int runAtual =
+            tamanhoRun;
+
+        while (
+            runAtual < totalRegistros
+        ) {
+
+            System.out.println(
+                "Intercalando blocos de tamanho "
+                + runAtual
+                + "..."
+            );
+
+            try (
+                RandomAccessFile in1 =
+                    new RandomAccessFile(
+                        entrada1,
+                        "r"
+                    );
+
+                RandomAccessFile in2 =
+                    new RandomAccessFile(
+                        entrada2,
+                        "r"
+                    );
+
+                RandomAccessFile out1 =
+                    new RandomAccessFile(
+                        saida1,
+                        "rw"
+                    );
+
+                RandomAccessFile out2 =
+                    new RandomAccessFile(
+                        saida2,
+                        "rw"
+                    )
+            ) {
+
+                out1.setLength(0);
+                out2.setLength(0);
+
+                boolean usarSaida1 =
+                    true;
+
+                while (
+                    in1.getFilePointer()
+                        < in1.length()
+                    ||
+                    in2.getFilePointer()
+                        < in2.length()
+                ) {
+
+                    RandomAccessFile destino =
+                        usarSaida1
+                            ? out1
+                            : out2;
+
+                    intercalarUmParDeRuns(
+                        in1,
+                        in2,
+                        destino,
+                        runAtual
+                    );
+
+                    usarSaida1 =
+                        !usarSaida1;
+                }
+            }
+
+            /*
+             * Depois de uma passada,
+             * cada run dobra de tamanho.
+             */
+            runAtual *= 2;
+
+            /*
+             * Troca os arquivos:
+             *
+             * saídas viram entradas
+             * e entradas antigas viram
+             * próximas saídas.
+             */
+            String antigaEntrada1 =
+                entrada1;
+
+            String antigaEntrada2 =
+                entrada2;
+
+            entrada1 =
+                saida1;
+
+            entrada2 =
+                saida2;
+
+            saida1 =
+                antigaEntrada1;
+
+            saida2 =
+                antigaEntrada2;
+        }
+
+        arquivoFinalTemporario =
+            entrada1;
+
+        tamanhoRun =
+            runAtual;
+
+        System.out.println(
+            "Fase 2 concluida."
+        );
+    }
+
+    private void intercalarUmParDeRuns(
+        RandomAccessFile in1,
+        RandomAccessFile in2,
+        RandomAccessFile destino,
+        int limiteRun
+    ) throws Exception {
+
+        int lidos1 = 0;
+        int lidos2 = 0;
+
+        Jogo jogo1 = null;
+        Jogo jogo2 = null;
+
+        if (
+            lidos1 < limiteRun
+            &&
+            in1.getFilePointer()
+                < in1.length()
+        ) {
+
+            jogo1 =
+                lerProximoJogoTemporario(
+                    in1
+                );
+
+            if (jogo1 != null) {
+                lidos1++;
             }
         }
 
-        // Se o temp2 acabou, mas ainda há jogos no temp1, descarrega o resto
-        while (j1 != null) {
-            escreverJogo(temp3, j1);
-            j1 = lerProximoJogo(temp1);
+        if (
+            lidos2 < limiteRun
+            &&
+            in2.getFilePointer()
+                < in2.length()
+        ) {
+
+            jogo2 =
+                lerProximoJogoTemporario(
+                    in2
+                );
+
+            if (jogo2 != null) {
+                lidos2++;
+            }
         }
 
-        // Se o temp1 acabou, mas ainda há jogos no temp2, descarrega o resto
-        while (j2 != null) {
-            escreverJogo(temp3, j2);
-            j2 = lerProximoJogo(temp2);
-        }
+        while (
+            jogo1 != null
+            ||
+            jogo2 != null
+        ) {
 
-        temp1.close();
-        temp2.close();
-        temp3.close();
-        
-        System.out.println("Fase 2 (Intercalacao) concluida! Arquivo temp3.db gerado com os dados unificados e ordenados.");
+            if (
+                jogo2 == null
+                ||
+                (
+                    jogo1 != null
+                    &&
+                    jogo1.getNome()
+                        .compareToIgnoreCase(
+                            jogo2.getNome()
+                        ) <= 0
+                )
+            ) {
+
+                escreverJogo(
+                    destino,
+                    jogo1
+                );
+
+                if (
+                    lidos1 < limiteRun
+                    &&
+                    in1.getFilePointer()
+                        < in1.length()
+                ) {
+
+                    jogo1 =
+                        lerProximoJogoTemporario(
+                            in1
+                        );
+
+                    if (jogo1 != null) {
+                        lidos1++;
+                    }
+
+                } else {
+
+                    jogo1 = null;
+                }
+
+            } else {
+
+                escreverJogo(
+                    destino,
+                    jogo2
+                );
+
+                if (
+                    lidos2 < limiteRun
+                    &&
+                    in2.getFilePointer()
+                        < in2.length()
+                ) {
+
+                    jogo2 =
+                        lerProximoJogoTemporario(
+                            in2
+                        );
+
+                    if (jogo2 != null) {
+                        lidos2++;
+                    }
+
+                } else {
+
+                    jogo2 = null;
+                }
+            }
+        }
     }
 
-    // Método auxiliar para ler um registo (ignorando os excluídos)
-    private Jogo lerProximoJogo(RandomAccessFile arq) throws Exception {
-        if (arq.getFilePointer() == arq.length()) return null; // Fim do ficheiro
-        
-        byte lapide = arq.readByte();
-        short tamanho = arq.readShort();
-        byte[] bytes = new byte[tamanho];
-        arq.read(bytes);
-        
-        if (lapide != '*') {
-            Jogo j = new Jogo();
-            j.fromByteArray(bytes);
-            return j;
+    // =========================================================
+    // FASE 3 - SUBSTITUIÇÃO DO ARQUIVO
+    // =========================================================
+
+    public void finalizar()
+        throws Exception {
+
+        System.out.println(
+            "Iniciando Fase 3: substituicao do arquivo..."
+        );
+
+        if (
+            arquivoFinalTemporario
+            == null
+        ) {
+
+            throw new IllegalStateException(
+                "Execute a distribuicao e a intercalacao antes."
+            );
         }
-        return lerProximoJogo(arq); // Se for lápide excluída, chama-se a si próprio para pular para o próximo
+
+        /*
+         * Guarda o último ID do arquivo original.
+         */
+        long ultimoId;
+
+        try (
+            RandomAccessFile origem =
+                new RandomAccessFile(
+                    caminhoArquivo,
+                    "r"
+                )
+        ) {
+
+            ultimoId =
+                origem.readLong();
+        }
+
+        Path original =
+            Path.of(
+                caminhoArquivo
+            );
+
+        Path novo =
+            Path.of(
+                caminhoArquivo
+                    + ".novo"
+            );
+
+        try (
+            RandomAccessFile novoArquivo =
+                new RandomAccessFile(
+                    novo.toFile(),
+                    "rw"
+                );
+
+            RandomAccessFile ordenado =
+                new RandomAccessFile(
+                    arquivoFinalTemporario,
+                    "r"
+                )
+        ) {
+
+            novoArquivo.setLength(0);
+
+            /*
+             * Cabeçalho do Arquivo<T>.
+             */
+            novoArquivo.writeLong(
+                ultimoId
+            );
+
+            // Lista de excluídos vazia
+            novoArquivo.writeLong(
+                -1
+            );
+
+            byte[] buffer =
+                new byte[4096];
+
+            int quantidadeLida;
+
+            while (
+                (
+                    quantidadeLida =
+                        ordenado.read(buffer)
+                ) != -1
+            ) {
+
+                novoArquivo.write(
+                    buffer,
+                    0,
+                    quantidadeLida
+                );
+            }
+        }
+
+        Files.move(
+            novo,
+            original,
+            StandardCopyOption.REPLACE_EXISTING
+        );
+
+        /*
+         * Os registros mudaram de endereço.
+         * Portanto o Hash antigo ficou inválido.
+         */
+        Files.deleteIfExists(
+            Path.of(
+                "./dados/indices/jogos.dir"
+            )
+        );
+
+        Files.deleteIfExists(
+            Path.of(
+                "./dados/indices/jogos.bkt"
+            )
+        );
+
+        limparTemporarios();
+
+        System.out.println(
+            "Fase 3 concluida."
+        );
     }
 
-    // Método auxiliar para escrever um registo
-    private void escreverJogo(RandomAccessFile arq, Jogo j) throws Exception {
-        byte[] bytes = j.toByteArray();
-        arq.writeByte(' ');
-        arq.writeShort(bytes.length);
-        arq.write(bytes);
+    // =========================================================
+    // AUXILIARES
+    // =========================================================
+
+    private Jogo
+        lerRegistroDoArquivoDeDados(
+            RandomAccessFile arquivo
+        ) throws Exception {
+
+        byte lapide =
+            arquivo.readByte();
+
+        int tamanho =
+            arquivo.readUnsignedShort();
+
+        byte[] dados =
+            new byte[tamanho];
+
+        arquivo.readFully(dados);
+
+        if (lapide == '*') {
+            return null;
+        }
+
+        Jogo jogo =
+            new Jogo();
+
+        jogo.fromByteArray(
+            dados
+        );
+
+        return jogo;
     }
 
-    public void finalizar() throws Exception {
-        System.out.println("A iniciar a Fase 3: Substituicao do arquivo e limpeza...");
-        
-        // 1. Ler o último ID do arquivo original para não perdermos a contagem
-        RandomAccessFile arqOrigem = new RandomAccessFile(caminhoArquivo, "r");
-        long ultimoId = arqOrigem.readLong();
-        arqOrigem.close();
+    private Jogo
+        lerProximoJogoTemporario(
+            RandomAccessFile arquivo
+        ) throws Exception {
 
-        // 2. Apagar o arquivo original
-        java.io.File original = new java.io.File(caminhoArquivo);
-        original.delete();
+        if (
+            arquivo.getFilePointer()
+            >= arquivo.length()
+        ) {
 
-        // 3. Criar o novo arquivo original e escrever o cabeçalho
-        RandomAccessFile novoArq = new RandomAccessFile(caminhoArquivo, "rw");
-        novoArq.writeLong(ultimoId); // Mantém o gerador de IDs intacto
-        novoArq.writeLong(-1);       // Zera a lista de excluídos (já limpámos tudo no merge)
-
-        // 4. Copiar os dados ordenados do temp3 para o novo arquivo original
-        RandomAccessFile temp3 = new RandomAccessFile("./dados/jogos/temp3.db", "r");
-        byte[] buffer = new byte[4096];
-        int lidos;
-        while ((lidos = temp3.read(buffer)) != -1) {
-            novoArq.write(buffer, 0, lidos);
+            return null;
         }
-        
-        temp3.close();
-        novoArq.close();
 
-        // 5. Apagar arquivos temporários
-        new java.io.File("./dados/jogos/temp1.db").delete();
-        new java.io.File("./dados/jogos/temp2.db").delete();
-        new java.io.File("./dados/jogos/temp3.db").delete();
+        byte lapide =
+            arquivo.readByte();
 
-        // 6. Apagar os índices do Hash para forçar a reconstrução automática
-        new java.io.File("./dados/indices/jogos.dir").delete();
-        new java.io.File("./dados/indices/jogos.bkt").delete();
+        int tamanho =
+            arquivo.readUnsignedShort();
 
-        System.out.println("Fase 3 concluida! Base de dados oficial atualizada e ordenada.");
+        byte[] dados =
+            new byte[tamanho];
+
+        arquivo.readFully(dados);
+
+        if (lapide == '*') {
+
+            return
+                lerProximoJogoTemporario(
+                    arquivo
+                );
+        }
+
+        Jogo jogo =
+            new Jogo();
+
+        jogo.fromByteArray(
+            dados
+        );
+
+        return jogo;
+    }
+
+    private void escreverJogo(
+        RandomAccessFile arquivo,
+        Jogo jogo
+    ) throws Exception {
+
+        byte[] dados =
+            jogo.toByteArray();
+
+        arquivo.writeByte(' ');
+
+        arquivo.writeShort(
+            dados.length
+        );
+
+        arquivo.write(
+            dados
+        );
+    }
+
+    private void limparTemporarios()
+        throws Exception {
+
+        Files.deleteIfExists(
+            Path.of(tempA)
+        );
+
+        Files.deleteIfExists(
+            Path.of(tempB)
+        );
+
+        Files.deleteIfExists(
+            Path.of(tempC)
+        );
+
+        Files.deleteIfExists(
+            Path.of(tempD)
+        );
     }
 }

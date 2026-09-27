@@ -3,6 +3,7 @@ package menu;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.time.LocalDate;
+import java.io.File;
 
 import entidades.Jogo;
 import entidades.Publicadora;
@@ -25,9 +26,21 @@ public class Menu {
         arquivoPublicadoras = new Arquivo<>(
                 "publicadoras",
                 Publicadora.class.getConstructor());
-        arvorePublicadoraJogo = new persistencia.ArvoreBMais(
-                5, 
-                "./dados/indices/arvore_pub_jogo.db");
+        File arquivoArvore = new File("./dados/indices/arvore_pub_jogo.db");
+
+        boolean precisaReconstruirArvore = !arquivoArvore.exists() || arquivoArvore.length() < 8;
+
+        arvorePublicadoraJogo = new persistencia.ArvoreBMais(5, "./dados/indices/arvore_pub_jogo.db");
+
+        if (precisaReconstruirArvore) {
+
+            for (Jogo jogo : arquivoJogos.readAll()) {
+
+                arvorePublicadoraJogo.create(
+                        jogo.getPublicadoraId(),
+                        jogo.getId());
+            }
+        }
     }
 
     public void executar() throws Exception {
@@ -65,6 +78,7 @@ public class Menu {
 
         arquivoJogos.close();
         arquivoPublicadoras.close();
+        arvorePublicadoraJogo.close();
         scanner.close();
     }
 
@@ -111,12 +125,11 @@ public class Menu {
                 case 5:
                     excluirJogo();
                     break;
-                
+
                 case 6:
                     listarJogosDaPublicadora();
                     break;
-                    
-                
+
                 case 7:
                     ordenarJogos();
                     break;
@@ -213,6 +226,7 @@ public class Menu {
     }
 
     private void atualizarJogo() throws Exception {
+
         System.out.println("\n========== ATUALIZAR JOGO ==========");
 
         System.out.print("ID do jogo: ");
@@ -228,6 +242,10 @@ public class Menu {
 
         System.out.println("\nDados atuais:");
         mostrarJogo(jogo);
+
+        // Guarda a publicadora antiga para atualizar a Árvore B+
+        // caso o relacionamento seja alterado.
+        long publicadoraAntigaId = jogo.getPublicadoraId();
 
         System.out.println("\nDigite os novos dados:");
 
@@ -245,7 +263,7 @@ public class Menu {
         long publicadoraId = scanner.nextLong();
         scanner.nextLine();
 
-        // Verifica se a publicadora existe
+        // Verifica se a nova publicadora realmente existe.
         Publicadora publicadora = arquivoPublicadoras.read(publicadoraId);
 
         if (publicadora == null) {
@@ -260,14 +278,16 @@ public class Menu {
         String[] idiomas = new String[quantidadeIdiomas];
 
         for (int i = 0; i < quantidadeIdiomas; i++) {
+
             System.out.print(
                     "Idioma " + (i + 1) + ": ");
 
             idiomas[i] = scanner.nextLine();
         }
 
+        // mantém o mesmo ID do registro original.
         Jogo novoJogo = new Jogo(
-                id, // mantém o ID!
+                id,
                 nome,
                 preco,
                 dataLancamento,
@@ -275,15 +295,36 @@ public class Menu {
                 idiomas);
 
         if (arquivoJogos.update(novoJogo)) {
+
+            /*
+             * Se o jogo mudou de publicadora,
+             * precisamos atualizar o índice secundário B+.
+             */
+            if (publicadoraAntigaId != publicadoraId) {
+
+                // Remove a associação antiga
+                arvorePublicadoraJogo.delete(
+                        publicadoraAntigaId,
+                        id);
+
+                // Cria a nova associação
+                arvorePublicadoraJogo.create(
+                        publicadoraId,
+                        id);
+            }
+
             System.out.println(
                     "Jogo atualizado com sucesso!");
+
         } else {
+
             System.out.println(
                     "Nao foi possivel atualizar o jogo.");
         }
     }
 
     private void excluirJogo() throws Exception {
+
         System.out.println("\n========== EXCLUIR JOGO ==========");
 
         System.out.print("ID do jogo: ");
@@ -303,29 +344,64 @@ public class Menu {
         String resposta = scanner.nextLine();
 
         if (resposta.equalsIgnoreCase("S")) {
+
+            long publicadoraId = jogo.getPublicadoraId();
+
             if (arquivoJogos.delete(id)) {
-                System.out.println("Jogo excluido com sucesso!");
+
+                /*
+                 * Remove também a associação
+                 * da Árvore B+.
+                 */
+                arvorePublicadoraJogo.delete(
+                        publicadoraId,
+                        id);
+
+                System.out.println(
+                        "Jogo excluido com sucesso!");
+
             } else {
-                System.out.println("Nao foi possivel excluir o jogo.");
+
+                System.out.println(
+                        "Nao foi possivel excluir o jogo.");
             }
+
         } else {
-            System.out.println("Operacao cancelada.");
+
+            System.out.println(
+                    "Operacao cancelada.");
         }
     }
 
-    private void mostrarJogo(Jogo jogo) {
+    private void mostrarJogo(Jogo jogo) throws Exception {
+
         System.out.println("\n---------- JOGO ----------");
+
         System.out.println("ID: " + jogo.getId());
         System.out.println("Nome: " + jogo.getNome());
         System.out.println("Preco: R$ " + jogo.getPreco());
         System.out.println("Data de lancamento: " + jogo.getDataLancamento());
-        System.out.println("ID da publicadora: " + jogo.getPublicadoraId());
+
+        System.out.println(
+                "ID da publicadora: " + jogo.getPublicadoraId());
+
+        Publicadora publicadora = arquivoPublicadoras.read(
+                jogo.getPublicadoraId());
+
+        if (publicadora != null) {
+
+            System.out.println(
+                    "Publicadora: " + publicadora.getNome());
+
+        } else {
+
+            System.out.println(
+                    "Publicadora: nao encontrada");
+        }
 
         System.out.println("Idiomas:");
 
-        String[] idiomas = jogo.getIdiomas();
-
-        for (String idioma : idiomas) {
+        for (String idioma : jogo.getIdiomas()) {
             System.out.println(" - " + idioma);
         }
 
@@ -333,21 +409,75 @@ public class Menu {
     }
 
     private void ordenarJogos() {
+
+        boolean arquivoFechado = false;
+
         try {
-            System.out.println("\n========== ORDENACAO EXTERNA ==========");
-            System.out.println("A iniciar o processo de intercalacao balanceada...");
-            
-            // Simula uma RAM de 3 registos para forçar a criação de blocos
-            persistencia.OrdenacaoExterna ordenacao = new persistencia.OrdenacaoExterna("./dados/jogos/jogos.db", 3);
-            
+
+            System.out.println(
+                    "\n========== ORDENACAO EXTERNA ==========");
+
+            System.out.println(
+                    "Iniciando o processo de intercalacao balanceada...");
+
+            // Fecha jogos.db e o Hash antes de substituir o arquivo físico.
+            arquivoJogos.close();
+
+            arquivoFechado = true;
+
+            persistencia.OrdenacaoExterna ordenacao = new persistencia.OrdenacaoExterna(
+                    "./dados/jogos/jogos.db",
+                    3);
+
             ordenacao.ordenarPorNome();
+
             ordenacao.intercalar();
+
             ordenacao.finalizar();
-            
-            System.out.println("Sucesso: Base de dados ordenada e indices reconstruidos!");
+
+            /*
+             * Reabre o Arquivo<Jogo>.
+             *
+             * Como jogos.dir e jogos.bkt foram apagados
+             * durante a ordenação, o construtor de Arquivo
+             * reconstruirá automaticamente o Hash.
+             */
+            arquivoJogos = new Arquivo<>(
+                    "jogos",
+                    Jogo.class.getConstructor());
+
+            arquivoFechado = false;
+
+            System.out.println(
+                    "Sucesso: base de dados ordenada e Hash reconstruido!");
+
         } catch (Exception e) {
-            System.out.println("Erro ao ordenar ficheiro: " + e.getMessage());
+
+            System.out.println(
+                    "Erro ao ordenar arquivo: "
+                            + e.getMessage());
+
             e.printStackTrace();
+
+            /*
+             * Se der erro depois de fechar o arquivo,
+             * tenta reabri-lo para o programa continuar funcionando.
+             */
+            if (arquivoFechado) {
+
+                try {
+
+                    arquivoJogos = new Arquivo<>(
+                            "jogos",
+                            Jogo.class.getConstructor());
+
+                } catch (Exception erroReabertura) {
+
+                    System.out.println(
+                            "Erro ao reabrir o arquivo de jogos: "
+                                    + erroReabertura.getMessage());
+                }
+            }
         }
     }
 
@@ -393,7 +523,7 @@ public class Menu {
                 case 5:
                     excluirPublicadora();
                     break;
-                
+
                 case 6:
                     listarJogosDaPublicadora();
                     break;
