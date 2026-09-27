@@ -84,6 +84,7 @@ public class Menu {
             System.out.println("4 - Atualizar jogo");
             System.out.println("5 - Excluir jogo");
             System.out.println("6 - Listar jogos da publicadora");
+            System.out.println("7 - Ordenar jogos alfabeticamente");
             System.out.println("0 - Voltar");
             System.out.print("\nEscolha: ");
 
@@ -109,7 +110,17 @@ public class Menu {
 
                 case 5:
                     excluirJogo();
-                    break;            
+                    break;
+                
+                case 6:
+                    listarJogosDaPublicadora();
+                    break;
+                    
+                
+                case 7:
+                    ordenarJogos();
+                    break;
+
                 case 0:
                     break;
 
@@ -319,6 +330,25 @@ public class Menu {
         }
 
         System.out.println("--------------------------");
+    }
+
+    private void ordenarJogos() {
+        try {
+            System.out.println("\n========== ORDENACAO EXTERNA ==========");
+            System.out.println("A iniciar o processo de intercalacao balanceada...");
+            
+            // Simula uma RAM de 3 registos para forçar a criação de blocos
+            persistencia.OrdenacaoExterna ordenacao = new persistencia.OrdenacaoExterna("./dados/jogos/jogos.db", 3);
+            
+            ordenacao.ordenarPorNome();
+            ordenacao.intercalar();
+            ordenacao.finalizar();
+            
+            System.out.println("Sucesso: Base de dados ordenada e indices reconstruidos!");
+        } catch (Exception e) {
+            System.out.println("Erro ao ordenar ficheiro: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     // =========================================================
