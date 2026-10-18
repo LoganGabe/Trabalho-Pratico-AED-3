@@ -1,1 +1,7 @@
 /bin/
+/out/
+/scenario-*/
+*.class
+*.db
+!/dados/**/*.db
+!/dados/indices/*.db
