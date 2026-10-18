@@ -85,7 +85,7 @@ Os itens abaixo são separados da implementação das Partes 1–3. A validaçã
 - [x] **4.6** Testar persistência após fechar e reabrir o programa.
 - [x] **4.7** Verificar as funcionalidades anteriores implementadas, com a suíte de regressão das Fases I/II.
 - [ ] **4.8** Gravar o vídeo demonstrativo de até 3 minutos.
-- [ ] **4.9** Publicar e conferir as alterações no GitHub.
+- [x] **4.9** Publicar e conferir as alterações no GitHub. Implementação publicada em `origin/main` no commit `c9047d6` e hash remoto conferido.
 - [ ] **4.10** Preparar o PDF único com documentação, formulário, link do GitHub e referência ao vídeo.
 - [ ] **4.11** Realizar a entrega no Canvas.
 

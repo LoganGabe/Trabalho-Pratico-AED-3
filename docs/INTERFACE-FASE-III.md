@@ -53,4 +53,4 @@ Roteiro sugerido, a ser gravado pelo grupo:
 | 2:10–2:35 | Fechar/reabrir a aplicação e mostrar persistência; apresentar o arquivo intermediário e os pares dos dois índices no código. |
 | 2:35–3:00 | Indicar classes do N:N, serviços e testes de consistência. |
 
-Para demonstrar persistência, mantenha alguns registros cadastrados antes de fechar. O teste automatizado limpa sua própria base; use uma base demonstrativa separada para o vídeo. A gravação, publicação no GitHub, composição do PDF final e envio ao Canvas continuam como etapas finais do grupo, sem serem marcados como realizados por esta implementação.
+Para demonstrar persistência, mantenha alguns registros cadastrados antes de fechar. O teste automatizado limpa sua própria base; use uma base demonstrativa separada para o vídeo. A implementação foi publicada em `origin/main`, com hash remoto conferido. A gravação, composição do PDF final e envio ao Canvas continuam como etapas finais do grupo.

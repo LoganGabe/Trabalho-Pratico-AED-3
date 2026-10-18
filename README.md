@@ -129,6 +129,7 @@ A suíte gráfica fecha e reabre a janela com dados e associações ativos, orde
 - [Modelagem e arquitetura da Fase III](docs/MODELAGEM-FASE-III.md)
 - [Respostas às cinco perguntas oficiais do Formulário de Decisões](docs/FORMULARIO-DECISOES-FASE-III.md)
 - [Checklist de continuidade e responsabilidades](docs/CONTINUIDADE-FASE-III.md)
+- [Checklist em Word](docs/CHECKLIST-FASE-III.docx)
 - [Repositório do grupo](https://github.com/LoganGabe/Trabalho-Pratico-AED-3)
 
-As Partes 1, 2 e 3 estão implementadas, integradas e com validação automatizada aprovada. Gravação do vídeo, publicação das alterações no GitHub, montagem do PDF único e envio ao Canvas continuam como etapas finais do grupo.
+As Partes 1, 2 e 3 estão implementadas, integradas, com validação automatizada aprovada e publicadas no GitHub. Gravação do vídeo, montagem do PDF único e envio ao Canvas continuam como etapas finais do grupo.
