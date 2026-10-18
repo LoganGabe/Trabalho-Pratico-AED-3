@@ -35,7 +35,16 @@ O sistema oferece funcionalidades para:
 - Árvore B+
 - Intercalação Balanceada
 
-## Testes automatizados
+## Documentação da Fase III
+
+- [Checklist de continuidade e divisão de responsabilidades](docs/CONTINUIDADE-FASE-III.md)
+- [Implementação, decisões e testes do relacionamento N:N](docs/PROGRESSO-FASE-III.md)
+
+## Execução dos testes automatizados
+
+Além da suíte anterior, o script executa três testes da Fase III: serialização da
+associação, persistência e índices N:N, e preparação da integração com as entidades.
+O teste de integração ainda usa um registro auxiliar no lugar de Desenvolvedora.
 
 Requer um **JDK 11 ou superior** (`java` e `javac` no PATH) e Bash. Não é necessário instalar bibliotecas de teste.
 
