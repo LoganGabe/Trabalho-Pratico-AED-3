@@ -85,6 +85,21 @@ public class RelacionamentoJogoDesenvolvedoraTest {
             verificar(relacionamento.desenvolvedorasDoJogo(jogoId).equals(Arrays.asList(devId)), "Consulta de desenvolvedoras por jogo");
             verificar(relacionamento.jogosDaDesenvolvedora(devId).equals(Arrays.asList(jogoId)), "Consulta de jogos por desenvolvedora");
 
+            // Alterar campos e a publicadora preserva o N:N e sincroniza o 1:N.
+            long novaPublicadora = publicadoras.create(new Publicadora(-1, "Outra publicadora", "Brasil", 2000, ""));
+            verificar(servicoDev.atualizar(new Desenvolvedora(devId, "Estudio atualizado", "Brasil", 2001)), "Atualizar Desenvolvedora com vínculo");
+            verificar(servicoJogo.atualizar(new Jogo(jogoId, "Jogo atualizado", 99f, LocalDate.of(2023, 1, 1),
+                novaPublicadora, new String[]{"pt-BR"})), "Atualizar Jogo com vínculo");
+            verificar(servicoJogo.listarPorPublicadora(pubId).isEmpty(), "Remover FK antiga da B+");
+            verificar(servicoJogo.listarPorPublicadora(novaPublicadora).get(0).getId() == jogoId, "Incluir FK nova na B+");
+            verificar(relacionamento.desenvolvedorasDoJogo(jogoId).equals(Arrays.asList(devId)), "N:N preservado após alterações");
+            verificar(relacionamento.jogosDaDesenvolvedora(devId).equals(Arrays.asList(jogoId)), "Índice inverso preservado após alterações");
+            try {
+                servicoJogo.atualizar(new Jogo(jogoId, "Invalido", 0, LocalDate.now(), 999, new String[0]));
+                throw new AssertionError("Aceitou atualização com FK inválida e vínculo N:N");
+            } catch (IllegalArgumentException esperado) { }
+            verificar(servicoJogo.consultar(jogoId).getPublicadoraId() == novaPublicadora, "Atualização inválida preserva FK e dados");
+
             // 5. Bloqueio de exclusão quando possuem associações ativas (2.6 e 2.7)
             try {
                 servicoDev.excluir(devId);

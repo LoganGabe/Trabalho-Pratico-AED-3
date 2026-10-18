@@ -215,12 +215,12 @@ public class TestSuite {
         Path stdin = Files.createTempFile(dir, "stdin-", ".txt"); Path output = Files.createTempFile(dir, "stdout-", ".txt");
         Files.writeString(stdin, input, StandardCharsets.UTF_8);
         Process p = new ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
-            "-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-cp", System.getProperty("java.class.path"), "Main")
+            "-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-cp", System.getProperty("java.class.path"), "ConsoleTestDriver")
             .directory(dir.toFile()).redirectInput(stdin.toFile()).redirectErrorStream(true).redirectOutput(output.toFile()).start();
         try {
-            if (!p.waitFor(20, TimeUnit.SECONDS)) { p.destroyForcibly(); p.waitFor(); throw new AssertionError("Main excedeu 20s"); }
+            if (!p.waitFor(20, TimeUnit.SECONDS)) { p.destroyForcibly(); p.waitFor(); throw new AssertionError("Menu de regressão excedeu 20s"); }
             String text = Files.readString(output).replace("\r\n", "\n");
-            eq(0, p.exitValue(), "Main terminou com erro:\n" + text);
+            eq(0, p.exitValue(), "Menu de regressão terminou com erro:\n" + text);
             check(!text.contains("Exception") && !text.contains("Erro ao ordenar"), "erro na aplicação:\n" + text);
             return text;
         } finally { if (p.isAlive()) { p.destroyForcibly(); p.waitFor(); } Files.deleteIfExists(stdin); Files.deleteIfExists(output); }
